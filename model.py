@@ -4,7 +4,9 @@ import torchvision.models as models
 
 
 def get_model(opt):
-    if opt.model == "vgg16":
+    if opt.model == "cnn":
+        return CNN()
+    elif opt.model == "vgg16":
         return VGG16()
     elif opt.model == "res18":
         return RES18()
@@ -13,9 +15,11 @@ def get_model(opt):
     elif opt.model == "res101":
         return RES101()
     elif opt.model == "mobile":
-        return MOBILENET()
-    elif opt.model == "googlenet":
-        return GOOGLENET()
+        return MOBILENETV2()
+    elif opt.model == "incep1":
+        return INCEPTIONV1()
+    elif opt.model == "incep3":
+        return INCEPTIONV3()
     else:
         raise ValueError("please input model name")
 
@@ -31,9 +35,50 @@ def get_optimizer(opt, net):
         raise ValueError("please input model name")
 
     
-
 MAX_CAPTCHA = 6
 ALL_CHAR_SET_LEN = 37
+
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(3, 16, kernel_size=3, padding=1), 
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.MaxPool2d(2)  
+        )
+
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(16, 64, kernel_size=3), 
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2) 
+        )
+
+        self.layer3 = nn.Sequential(
+            nn.Conv2d(64, 128, kernel_size=3), 
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.MaxPool2d(2)  
+        )
+ 
+        self.fc1 = nn.Sequential(
+            nn.Linear(4*16*128, 1024),
+            nn.Dropout(0.2),  
+            nn.ReLU()
+        )
+
+        self.fc2 = nn.Linear(1024, MAX_CAPTCHA * ALL_CHAR_SET_LEN) 
+
+    def forward(self, x):
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc1(x)
+        x = self.fc2(x)
+        return x
+
 
 class VGG16(nn.Module):
     def __init__(self):
@@ -78,9 +123,9 @@ class RES101(nn.Module):
         return out
 
 
-class MOBILENET(nn.Module):
+class MOBILENETV2(nn.Module):
     def __init__(self):
-        super(MOBILENET, self).__init__()
+        super(MOBILENETV2, self).__init__()
         self.num_cls = MAX_CAPTCHA * ALL_CHAR_SET_LEN
         self.base = models.mobilenet_v2(pretrained=False)
         self.base.classifier = nn.Linear(self.base.last_channel, self.num_cls)
@@ -88,13 +133,22 @@ class MOBILENET(nn.Module):
         out = self.base(x)
         return out
 
-
-class GOOGLENET(nn.Module):
+class INCEPTIONV1(nn.Module):
     def __init__(self):
-        super(GOOGLENET, self).__init__()
+        super(INCEPTIONV1, self).__init__()
         self.num_cls = MAX_CAPTCHA * ALL_CHAR_SET_LEN
         self.base = models.googlenet(pretrained=False)
-        self.base.classifier = nn.Linear(self.base.fc.in_features, self.num_cls)
+        self.base.classifier = nn.Linear(1024, self.num_cls)
+    def forward(self, x):
+        out = self.base(x).logits
+        return out
+
+class INCEPTIONV3(nn.Module):
+    def __init__(self):
+        super(INCEPTIONV3, self).__init__()
+        self.num_cls = MAX_CAPTCHA * ALL_CHAR_SET_LEN
+        self.base = models.inception_v3(pretrained=False)
+        self.base.classifier = nn.Linear(2048, self.num_cls)
     def forward(self, x):
         out = self.base(x)
         return out

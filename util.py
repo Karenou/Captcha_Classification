@@ -2,7 +2,7 @@ import torch
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import pandas as pd
-
+import os
 
 loader = transforms.Compose([
     transforms.ToTensor()])
@@ -25,6 +25,10 @@ def imshow(tensor, title=None):
         plt.title(title)
     plt.pause(0.001)  # pause a bit so that plots are updated
 
+def make_dir(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
 def save_history(history, model_name, save_path):
     df = pd.DataFrame.from_dict(history)
     df.to_csv(save_path + "_loss.csv", header=True)
@@ -37,4 +41,3 @@ def save_history(history, model_name, save_path):
     plt.savefig(save_path + "_loss.png")
     plt.close()
 
-    
