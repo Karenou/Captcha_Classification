@@ -6,7 +6,7 @@ import torchvision.transforms as transforms
 from torchvision.utils import save_image
 
 from cleverhans.torch.attacks.noise import noise
-# from cleverhans.torch.attacks.carlini_wagner_l2 import carlini_wagner_l2
+from cleverhans.torch.attacks.carlini_wagner_l2 import carlini_wagner_l2
 from cleverhans.torch.attacks.sparse_l1_descent import sparse_l1_descent
 from cleverhans.torch.attacks.fast_gradient_method import fast_gradient_method
 from cleverhans.torch.attacks.projected_gradient_descent import (projected_gradient_descent,)
@@ -15,13 +15,15 @@ from model import *
 from dataset import CaptchaData
 from util import save_history, make_dir
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default=10, help="Number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=32, help="Batch size for dataloader")
 parser.add_argument("--model", type=str, default="res50", help="Pre-trained model.")
 parser.add_argument("--optimizer", type=str, default="adam", help="Optimizer for model during training.")
 parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate of the optimizer during training")
-parser.add_argument("--eps", type=float, default=0.1, help="Total epsilon for FGM and PGD attacks.")
+parser.add_argument("--eps", type=float, default=0.2, help="Total epsilon for FGM and PGD attacks.")
+parser.add_argument("--sim_eps", type=float, default=0.2, help="Total epsilon for noise and simba_single attacks.")
 parser.add_argument("--sparse_eps", type=float, default=20, help="Total epsilon for sparse l1 descent attacks.")
 parser.add_argument("--pgd_nb_iter", type=int, default=50, help="Number of iteration for PGD update.")
 parser.add_argument("--mode", type=str, default="train", help="Train or test mode.")
@@ -82,38 +84,40 @@ if __name__ == "__main__":
     else:
         # Evaluate on clean and adversarial data
         print("eval model on test set")
-        checkpoint = torch.load("./model/model/{}_epoch_{}.pth".format(opt.model, opt.n_epochs))
+        checkpoint = torch.load("./model/model/{}_epoch_10.pth".format(opt.model))
         net.load_state_dict(checkpoint["model_state_dict"])
         net.eval()
-        
+
         base_save_path = "./data/attack_image/{}".format(opt.model)
         make_dir(base_save_path)
-        make_dir("{}/noise_eps_{:.1f}".format(base_save_path, opt.eps))
+        make_dir("{}/noise_eps_{:.1f}".format(base_save_path, opt.sim_eps))
+        make_dir("{}/simba_eps_{:.1f}".format(base_save_path, opt.sim_eps))
         make_dir("{}/fgsm_eps_{:.1f}".format(base_save_path, opt.eps))
         make_dir("{}/pgd_eps_{:.1f}".format(base_save_path, opt.eps))
         make_dir("{}/sparse_eps_{:.1f}".format(base_save_path, opt.sparse_eps))
-        # make_dir("{}/cw".format(base_save_path))
 
         report = {"n_test":0, "correct":0, "correct_fgm":0, "correct_pgd":0}
         batch = 1
         for x, y, cap in test_data_loader:
-            # only save the first 20 batch attacked images for each model
+            # only generate 639 attacked images for each model
             if batch <= 20:
                 x, y = x.to(device),  y.to(device, dtype=torch.int64)
-                x_noise = noise(x, eps=opt.eps, order=np.inf)
+                x_noise = noise(x, eps=opt.sim_eps, order=np.inf)
+                x_sim = simba_single(device, x, num_iters=10000, epsilon=opt.sim_eps)
                 x_fgm = fast_gradient_method(net, x, opt.eps, np.inf)
                 x_pgd = projected_gradient_descent(net, x, opt.eps, 0.01, opt.pgd_nb_iter, np.inf)
                 x_sparse = sparse_l1_descent(net, x, eps=opt.sparse_eps, nb_iter=opt.pgd_nb_iter)
-                # x_cw = carlini_wagner_l2(net, x, 6*37)
+
 
                 print("batch %d" % batch)
                 for i in range(opt.batch_size):
                     label = cap[i]
-                    save_image(x_noise[i], "{}/noise_eps_{:.1f}/{}.png".format(base_save_path, opt.eps, label))
+                    save_image(x_noise[i], "{}/noise_eps_{:.1f}/{}.png".format(base_save_path, opt.sim_eps, label))
+                    save_image(x_sim[i], "{}/simba_eps_{:.1f}/{}.png".format(base_save_path, opt.sim_eps, label))
                     save_image(x_fgm[i], "{}/fgsm_eps_{:.1f}/{}.png".format(base_save_path, opt.eps, label))
                     save_image(x_pgd[i], "{}/pgd_eps_{:.1f}/{}.png".format(base_save_path, opt.eps, label))
                     save_image(x_sparse[i], "{}/sparse_eps_{:.1f}/{}.png".format(base_save_path, opt.sparse_eps, label))
-                    # save_image(x_cw[i], "{}/cw/{}.png".format(base_save_path, label))
+
                 batch += 1
 
             y_pred = net(x)  

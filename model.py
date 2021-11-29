@@ -3,6 +3,10 @@ from torch import nn
 import torchvision.models as models
 
 
+MAX_CAPTCHA = 6
+ALL_CHAR_SET_LEN = 37
+
+
 def get_model(opt):
     if opt.model == "cnn":
         return CNN()
@@ -16,10 +20,6 @@ def get_model(opt):
         return RES101()
     elif opt.model == "mobile":
         return MOBILENETV2()
-    elif opt.model == "incep1":
-        return INCEPTIONV1()
-    elif opt.model == "incep3":
-        return INCEPTIONV3()
     else:
         raise ValueError("please input model name")
 
@@ -34,21 +34,22 @@ def get_optimizer(opt, net):
     else:
         raise ValueError("please input model name")
 
-    
-def simba_single(x, num_iters=10000, epsilon=0.2, targeted=False):
+
+
+# ------------- attack model
+def simba_single(device, x, num_iters=10000, epsilon=0.2, targeted=False):
     n_dims = x.view(1, -1).size(1)
     perm = torch.randperm(n_dims)
     x = x.unsqueeze(0)
     for i in range(num_iters):
-        diff = torch.zeros(n_dims)
+        diff = torch.zeros(n_dims, device=device)
         diff[perm[i]] = epsilon
         x = (x - diff.view(x.size())).clamp(0, 1)
     return x.squeeze()
     
 
-MAX_CAPTCHA = 6
-ALL_CHAR_SET_LEN = 37
 
+# ------------ classification model
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
@@ -140,27 +141,6 @@ class MOBILENETV2(nn.Module):
         self.num_cls = MAX_CAPTCHA * ALL_CHAR_SET_LEN
         self.base = models.mobilenet_v2(pretrained=False)
         self.base.classifier = nn.Linear(self.base.last_channel, self.num_cls)
-    def forward(self, x):
-        out = self.base(x)
-        return out
-
-
-class INCEPTIONV1(nn.Module):
-    def __init__(self):
-        super(INCEPTIONV1, self).__init__()
-        self.num_cls = MAX_CAPTCHA * ALL_CHAR_SET_LEN
-        self.base = models.googlenet(pretrained=False)
-        self.base.classifier = nn.Linear(1024, self.num_cls)
-    def forward(self, x):
-        out = self.base(x).logits
-        return out
-
-class INCEPTIONV3(nn.Module):
-    def __init__(self):
-        super(INCEPTIONV3, self).__init__()
-        self.num_cls = MAX_CAPTCHA * ALL_CHAR_SET_LEN
-        self.base = models.inception_v3(pretrained=False)
-        self.base.classifier = nn.Linear(2048, self.num_cls)
     def forward(self, x):
         out = self.base(x)
         return out
