@@ -24,6 +24,16 @@ FLAGS = flags.FLAGS
 captcha_list = list('0123456789abcdefghijklmnopqrstuvwxyz_')
 captcha_length = 6
 
+def simba_single(x, num_iters=10000, epsilon=0.2, targeted=False):
+    n_dims = x.view(1, -1).size(1)
+    perm = torch.randperm(n_dims)
+    x = x.unsqueeze(0)
+    for i in range(num_iters):
+        diff = torch.zeros(n_dims)
+        diff[perm[i]] = epsilon
+        x = (x - diff.view(x.size())).clamp(0, 1)
+    return x.squeeze()
+
 # 验证码文本转为向量
 def text2vec(text):
     vector = torch.zeros((captcha_length, len(captcha_list)))
