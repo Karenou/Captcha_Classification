@@ -136,7 +136,7 @@ class RES101(nn.Module):
 
 class MOBILENETV2(nn.Module):
     def __init__(self):
-        super(MOBILENET, self).__init__()
+        super(MOBILENETV2, self).__init__()
         self.num_cls = MAX_CAPTCHA * ALL_CHAR_SET_LEN
         self.base = models.mobilenet_v2(pretrained=False)
         self.base.classifier = nn.Linear(self.base.last_channel, self.num_cls)
