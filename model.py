@@ -35,6 +35,17 @@ def get_optimizer(opt, net):
         raise ValueError("please input model name")
 
     
+def simba_single(x, num_iters=10000, epsilon=0.2, targeted=False):
+    n_dims = x.view(1, -1).size(1)
+    perm = torch.randperm(n_dims)
+    x = x.unsqueeze(0)
+    for i in range(num_iters):
+        diff = torch.zeros(n_dims)
+        diff[perm[i]] = epsilon
+        x = (x - diff.view(x.size())).clamp(0, 1)
+    return x.squeeze()
+    
+
 MAX_CAPTCHA = 6
 ALL_CHAR_SET_LEN = 37
 
@@ -125,13 +136,14 @@ class RES101(nn.Module):
 
 class MOBILENETV2(nn.Module):
     def __init__(self):
-        super(MOBILENETV2, self).__init__()
+        super(MOBILENET, self).__init__()
         self.num_cls = MAX_CAPTCHA * ALL_CHAR_SET_LEN
         self.base = models.mobilenet_v2(pretrained=False)
         self.base.classifier = nn.Linear(self.base.last_channel, self.num_cls)
     def forward(self, x):
         out = self.base(x)
         return out
+
 
 class INCEPTIONV1(nn.Module):
     def __init__(self):
