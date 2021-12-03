@@ -15,7 +15,7 @@ Required packages to install
 
 ------
 ## Preparation
-Download the train.tgz and test.tgz from <a href="https://drive.google.com/drive/folders/1clyJvuedGKL7mWSatx1pCnOFKUWFJzBo?usp=sharing">the download link</a>, unzip the two files and put under the data folder
+Download the train.zip and test.zip from <a href="https://drive.google.com/drive/folders/1clyJvuedGKL7mWSatx1pCnOFKUWFJzBo?usp=sharing">the download link</a>, unzip the two files and put under the data folder as `/data/train` and `/data/test`
 
 ## Run the program
 Run the following command using bash.
