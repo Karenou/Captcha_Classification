@@ -2,10 +2,8 @@ import torch
 from torch import nn
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-# import pandas as pd
 import numpy as np
 import cv2
-# from cv2 import cv2
 import math
 import os
 

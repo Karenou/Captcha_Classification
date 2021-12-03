@@ -1,23 +1,11 @@
-import math
-
-import numpy
-import numpy as np
 import torch
-import cv2
 from torch import nn
+from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
-from torch.nn.functional import normalize
 from tqdm import tqdm
-import csv
-import torchvision.models as models
-from torch.utils.data import Dataset, DataLoader
-import os
 
-from dataset import text2vec, CAPTCHA
+from dataset import CAPTCHA
 from model import *
-from util import get_RMSD, calculat_acc, get_accuracy
-
-
 
 
 captcha_list = list('0123456789abcdefghijklmnopqrstuvwxyz_')
