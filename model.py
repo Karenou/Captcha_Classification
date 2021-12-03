@@ -1,25 +1,24 @@
 import torch
 from torch import nn
 import torchvision.models as models
+from tqdm import tqdm
 
 
 MAX_CAPTCHA = 6
 ALL_CHAR_SET_LEN = 37
 
 
-def get_model(opt):
-    if opt.model == "cnn":
+def get_model(model_name):
+    if model_name == "cnn":
         return CNN()
-    elif opt.model == "vgg16":
-        return VGG16()
-    elif opt.model == "res18":
+    elif model_name == "res18":
         return RES18()
-    elif opt.model == "res50":
+    elif model_name == "res50":
         return RES50()
-    elif opt.model == "res101":
-        return RES101()
-    elif opt.model == "mobile":
-        return MOBILENETV2()
+    elif model_name == "mobile":
+        return MOBILENET()
+    elif model_name == "dense161":
+        return DENSE161()
     else:
         raise ValueError("please input model name")
 
@@ -36,15 +35,32 @@ def get_optimizer(opt, net):
 
 
 
-# ------------- attack model
-def simba_single(device, x, num_iters=10000, epsilon=0.2, targeted=False):
+# ------------- attack model - simple black-box attack
+def get_probs(net, x, y):
+    x = x.squeeze(0)
+    output = net(x)
+    y = y.squeeze(0)
+    y = y.type(torch.bool)
+    probs = torch.nn.Softmax()(output)[:, y]
+    return torch.diag(probs)
+
+def simba_single(net, x, y, num_iters=10000, epsilon=0.2, targeted=False):
     n_dims = x.view(1, -1).size(1)
     perm = torch.randperm(n_dims)
     x = x.unsqueeze(0)
-    for i in range(num_iters):
-        diff = torch.zeros(n_dims, device=device)
+    last_prob = get_probs(net, x, y)
+    for i in tqdm(range(num_iters)):
+        diff = torch.zeros(n_dims)
         diff[perm[i]] = epsilon
-        x = (x - diff.view(x.size())).clamp(0, 1)
+        left_prob = get_probs(net, (x - diff.view(x.size())).clamp(0, 1), y)
+        if targeted != (left_prob < last_prob):
+            x = (x - diff.view(x.size())).clamp(0, 1)
+            last_prob = left_prob
+        else:
+            right_prob = get_probs(net, (x + diff.view(x.size())).clamp(0, 1), y)
+            if targeted != (right_prob < last_prob):
+                x = (x + diff.view(x.size())).clamp(0, 1)
+                last_prob = right_prob
     return x.squeeze()
     
 
@@ -90,17 +106,6 @@ class CNN(nn.Module):
         x = self.fc1(x)
         x = self.fc2(x)
         return x
-
-
-class VGG16(nn.Module):
-    def __init__(self):
-        super(VGG16, self).__init__()
-        self.num_cls = MAX_CAPTCHA * ALL_CHAR_SET_LEN
-        self.base = models.vgg16(pretrained=False)
-        self.base.classifier[-1] = nn.Linear(4096, self.num_cls)
-    def forward(self, x):
-        out = self.base(x)
-        return out
         
 
 class RES18(nn.Module):
@@ -124,23 +129,24 @@ class RES50(nn.Module):
         out = self.base(x)
         return out
 
-class RES101(nn.Module):
+
+class MOBILENET(nn.Module):
     def __init__(self):
-        super(RES101, self).__init__()
+        super(MOBILENET, self).__init__()
         self.num_cls = MAX_CAPTCHA * ALL_CHAR_SET_LEN
-        self.base = models.resnet101(pretrained=False)
-        self.base.fc = nn.Linear(self.base.fc.in_features, self.num_cls)
+        self.base = models.mobilenet_v2(pretrained=False)
+        self.base.classifier = nn.Linear(self.base.last_channel, self.num_cls)
     def forward(self, x):
         out = self.base(x)
         return out
 
 
-class MOBILENETV2(nn.Module):
+class DENSE161(nn.Module):
     def __init__(self):
-        super(MOBILENETV2, self).__init__()
+        super(DENSE161, self).__init__()
         self.num_cls = MAX_CAPTCHA * ALL_CHAR_SET_LEN
-        self.base = models.mobilenet_v2(pretrained=False)
-        self.base.classifier = nn.Linear(self.base.last_channel, self.num_cls)
+        self.base = models.densenet161(pretrained=False)
+        self.base.classifier = nn.Linear(self.base.classifier.in_features, self.num_cls)
     def forward(self, x):
         out = self.base(x)
         return out
