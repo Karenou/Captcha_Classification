@@ -76,7 +76,7 @@ def train(epoch_nums, model_name):
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
-            if i % 5 == 0:
+            if i % 2000 == 0:
                 torch.save({'model_state_dict':net.state_dict(),
                             'optimizer_state_dict':optimizer.state_dict(),}, model_path)
             i += 1
@@ -90,8 +90,8 @@ def train(epoch_nums, model_name):
 ### model_list = [selfcnn, restnet18, restnet50, mobilenet, densenet161] used for training
 if __name__ == '__main__':
     # train classification model
-    train(1, cnn)
-    train(1, res18)
-    train(1, res50)
-    train(1, mobile)
-    train(1, dense161)
+    train(10, cnn)
+    train(10, res18)
+    train(10, res50)
+    train(10, mobile)
+    train(10, dense161)
