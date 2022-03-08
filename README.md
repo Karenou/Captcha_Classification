@@ -26,5 +26,8 @@ bash ./run.sh
 - Then it will generate the adversarial images using 5 attack methods and save under path `/data/attack_image`
 - Then it will evaluate the results and generate a `result.csv` and `RMSD.csv` files.
 
+## Report
+The project report can be found [here](assets/Adversarial_attack_on_captcha.pdf)
+
 ## Presentation
 Our project presentation can be found in [Youtube](https://www.youtube.com/watch?v=-txlUtuKonA&list=LL&index=1&t=1s).
